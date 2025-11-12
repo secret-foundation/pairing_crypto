@@ -1,5 +1,4 @@
 require "json"
-
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 folly_compiler_flags = '-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32'
 
@@ -11,32 +10,28 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => "10.0" }
-  s.source       = { :git => package["repository"]["url"], :tag => "#{s.version}" }
+  s.platforms    = { :ios => "13.0" }
+  s.source       = { :path => "." }
 
   s.requires_arc = true
-
   s.default_subspec = "Default"
 
   s.subspec "Default" do |ss|
-    ss.source_files = "ios/*.{h,m,mm}"
+    ss.source_files = [
+      "ios/*.{h,m,mm}",
+      "ios/lib/*.{h,m,mm}"
+    ]
+
     ss.dependency "React-Core"
-    ss.dependency "pairing-crypto-rn/PairingCrypto"
+    ss.vendored_frameworks = "ios/PairingCrypto.xcframework"
   end
 
-  s.subspec "PairingCrypto" do |ss|
-    ss.source_files = 'ios/lib/*.{h,m,mm}'
-    ss.vendored_libraries = "ios/lib/libpairing_crypto_c.a"
-  end
-
-  # Don't install the dependencies when we run `pod install` in the old architecture.
-  if ENV['RCT_NEW_ARCH_ENABLED'] == '1' then
+  if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
     s.compiler_flags = folly_compiler_flags + " -DRCT_NEW_ARCH_ENABLED=1"
-    s.pod_target_xcconfig    = {
-        "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/boost\"",
-        "CLANG_CXX_LANGUAGE_STANDARD" => "c++17"
+    s.pod_target_xcconfig = {
+      "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/boost\"",
+      "CLANG_CXX_LANGUAGE_STANDARD" => "c++17"
     }
-
     s.dependency "React-Codegen"
     s.dependency "RCT-Folly"
     s.dependency "RCTRequired"

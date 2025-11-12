@@ -2,6 +2,25 @@
 
 set -e
 
+if [ -z "${ANDROID_NDK_HOME:-}" ]; then
+  if [ -n "${ANDROID_SDK_ROOT:-}" ] && [ -d "$ANDROID_SDK_ROOT/ndk" ]; then
+    latest_ndk="$(ls -1 "$ANDROID_SDK_ROOT/ndk" | sort -V | tail -1)"
+    ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/$latest_ndk"
+  elif [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME/ndk" ]; then
+    latest_ndk="$(ls -1 "$ANDROID_HOME/ndk" | sort -V | tail -1)"
+    ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$latest_ndk"
+  fi
+fi
+
+if [ -z "${ANDROID_NDK_HOME:-}" ] || [ ! -d "$ANDROID_NDK_HOME" ]; then
+  echo "ERROR: ANDROID_NDK_HOME must point to an installed NDK (e.g. \$ANDROID_SDK_ROOT/ndk/26.x.y)"
+  exit 1
+fi
+
+export ANDROID_NDK_HOME
+export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+export ANDROID_NDK="$ANDROID_NDK_HOME"
+
 ROOT_DIRECTORY=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../../.. && pwd)
 
 # set the directory for the c wrapper

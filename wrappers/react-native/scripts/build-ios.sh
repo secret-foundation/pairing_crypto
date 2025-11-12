@@ -1,40 +1,85 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+IOS_MIN_DEVICE=${IOS_MIN_DEVICE:-13.0}
+IOS_MIN_SIM=${IOS_MIN_SIM:-13.0}
 
-LIBRARY_FILE="libpairing_crypto_c"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RN_PKG_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+RUST_CRATE_DIR="$RN_PKG_ROOT/../../wrappers/c"
+OBJC_HEADERS_DIR="$RN_PKG_ROOT/../../wrappers/obj-c/pairing_crypto"
+TARGET_DIR="$RN_PKG_ROOT/../../target"
 
-ROOT_DIRECTORY=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../../.. && pwd)
+XCFRAMEWORK_PATH="$RN_PKG_ROOT/ios/PairingCrypto.xcframework"
+SIM_FAT_DIR="$RN_PKG_ROOT/target/ios-sim-fat"
+OBJC_DST_DIR="$RN_PKG_ROOT/ios/lib"
 
-# set the directory for the c wrapper
-C_WRAPPER_DIRECTORY="$ROOT_DIRECTORY/wrappers/c"
-
-# set the directory for the obj-c wrapper
-OBJC_WRAPPER_DIRECTORY="$ROOT_DIRECTORY/wrappers/obj-c"
-
-# set the output directory
-OUTPUT_DIRECTORY="$ROOT_DIRECTORY/wrappers/react-native/ios/lib"
-
-echo "----------------------------------------------"
+echo "==> Building pairing_crypto_c for iOS (device + simulators)"
+echo "    Rust crate:   $RUST_CRATE_DIR"
+echo "    Headers:      $OBJC_HEADERS_DIR"
+echo "    Output XCFW:  $XCFRAMEWORK_PATH"
 echo
-echo "     C_WRAPPER_DIRECTORY=$C_WRAPPER_DIRECTORY"
-echo "  OBJC_WRAPPER_DIRECTORY=$OBJC_WRAPPER_DIRECTORY"
-echo "        OUTPUT_DIRECTORY=$OUTPUT_DIRECTORY"
+
+rm -rf "$XCFRAMEWORK_PATH" "$SIM_FAT_DIR"
+mkdir -p "$SIM_FAT_DIR" "$OBJC_DST_DIR" "$RN_PKG_ROOT/ios"
+
+# Always clean to ensure BLST_PORTABLE takes effect
+cargo clean -p pairing_crypto_c || true
+cargo clean -p blst || true
+
+echo "==> Device (arm64)"
 echo
-echo "----------------------------------------------"
+export SDKROOT="$(xcrun --sdk iphoneos --show-sdk-path)"
+export CC="$(xcrun --sdk iphoneos -f clang)"
+export AR="$(xcrun --sdk iphoneos -f ar)"
+export IPHONEOS_DEPLOYMENT_TARGET="$IOS_MIN_DEVICE"
+export BLST_PORTABLE=1
+export CFLAGS="-fembed-bitcode -isysroot $SDKROOT -miphoneos-version-min=$IPHONEOS_DEPLOYMENT_TARGET"
+export RUSTFLAGS="-C link-arg=-isysroot -C link-arg=$SDKROOT -C link-arg=-miphoneos-version-min=$IPHONEOS_DEPLOYMENT_TARGET"
+cargo build -p pairing_crypto_c --manifest-path "$RUST_CRATE_DIR/Cargo.toml" --release --target aarch64-apple-ios
 
-if [ -d $OUTPUT_DIRECTORY ]; then
-    rm -rf $OUTPUT_DIRECTORY/*
-fi
+echo "==> Simulator (x86_64)"
+echo
+cargo clean -p pairing_crypto_c || true
+cargo clean -p blst || true
+export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+export CC="$(xcrun --sdk iphonesimulator -f clang)"
+export AR="$(xcrun --sdk iphonesimulator -f ar)"
+export BLST_PORTABLE=1
+export CFLAGS="-fembed-bitcode -isysroot $SDKROOT -mios-simulator-version-min=$IOS_MIN_SIM"
+export RUSTFLAGS="-C link-arg=-isysroot -C link-arg=$SDKROOT -C link-arg=-mios-simulator-version-min=$IOS_MIN_SIM"
+cargo build -p pairing_crypto_c --manifest-path "$RUST_CRATE_DIR/Cargo.toml" --release --target x86_64-apple-ios
 
-mkdir -p $OUTPUT_DIRECTORY
+echo "==> Simulator (arm64)"
+echo
+cargo clean -p pairing_crypto_c || true
+cargo clean -p blst || true
+export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+export CC="$(xcrun --sdk iphonesimulator -f clang)"
+export AR="$(xcrun --sdk iphonesimulator -f ar)"
+export BLST_PORTABLE=1
+export CFLAGS="-fembed-bitcode -isysroot $SDKROOT -mios-simulator-version-min=$IOS_MIN_SIM"
+export RUSTFLAGS="-C link-arg=-isysroot -C link-arg=$SDKROOT -C link-arg=-mios-simulator-version-min=$IOS_MIN_SIM"
+cargo build -p pairing_crypto_c --manifest-path "$RUST_CRATE_DIR/Cargo.toml" --release --target aarch64-apple-ios-sim
 
-# Build the c wrapper for the IOS platform target
-source $C_WRAPPER_DIRECTORY/scripts/build-platform-targets.sh IOS $C_WRAPPER_DIRECTORY/out
+echo "==> Merging simulator slices"
+echo
+lipo -create \
+  "$TARGET_DIR/aarch64-apple-ios-sim/release/libpairing_crypto_c.a" \
+  "$TARGET_DIR/x86_64-apple-ios/release/libpairing_crypto_c.a" \
+  -output "$SIM_FAT_DIR/libpairing_crypto_c.a"
 
-# Copy to the external libraries to the subspec folder
-cp $C_WRAPPER_DIRECTORY/out/ios/universal/$LIBRARY_FILE.a \
-   $OUTPUT_DIRECTORY/$LIBRARY_FILE.a
+echo "==> Creating XCFramework"
+echo
+xcodebuild -create-xcframework \
+  -library "$TARGET_DIR/aarch64-apple-ios/release/libpairing_crypto_c.a" \
+  -headers "$OBJC_HEADERS_DIR" \
+  -library "$SIM_FAT_DIR/libpairing_crypto_c.a" \
+  -headers "$OBJC_HEADERS_DIR" \
+  -output "$XCFRAMEWORK_PATH"
 
-# Copy to the obj-c wrapper source code to the subspec folder
-cp $OBJC_WRAPPER_DIRECTORY/pairing_crypto/* $OUTPUT_DIRECTORY
+echo "==> Copying Objective-C headers"
+echo
+rsync -a --include="*.h" --include="*.m" --exclude="*" "$OBJC_HEADERS_DIR"/ "$OBJC_DST_DIR"/
+
+echo "✅ Built $XCFRAMEWORK_PATH"

@@ -49,6 +49,7 @@ example/vendor/
 
 # node.js
 #
+.yarn
 node_modules/
 npm-debug.log
 yarn-debug.log
@@ -67,3 +68,4 @@ android/keystores/debug.keystore
 
 # Compile output
 lib/
+ios/PairingCrypto.xcframework
