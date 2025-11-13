@@ -12,6 +12,7 @@
  */
 
 import { bls12381Sha256, bls12381Shake256 } from './bbs';
+import * as bbsBound from './bbs-bound';
 
 export * from './types';
 
@@ -41,5 +42,26 @@ export const bbs = {
     verify: bls12381Shake256.verify,
     deriveProof: bls12381Shake256.proofGen,
     verifyProof: bls12381Shake256.proofVerify,
+  },
+};
+
+export const bbs_bound = {
+  bls12381_bbs_g1_bls_sig_g2_sha256: {
+    BBS_PRIVATE_KEY_LENGTH: 32,
+    BBS_PUBLIC_KEY_LENGTH: 96,
+    BBS_SIGNATURE_LENGTH: 80,
+
+    BLS_PRIVATE_KEY_LENGTH: 32,
+    BLS_PUBLIC_KEY_LENGTH: 48,
+    BLS_KEY_POP_LENGTH: 96,
+
+    generateBbsKeyPair: bbsBound.generateBbsKeyPair,
+    generateBlsKeyPair: bbsBound.generateBlsKeyPair,
+    blsKeyPopGen: bbsBound.blsKeyPopGen,
+    blsKeyPopVerify: bbsBound.blsKeyPopVerify,
+    sign: bbsBound.sign,
+    verify: bbsBound.verify,
+    deriveProof: bbsBound.deriveProof,
+    verifyProof: bbsBound.verifyProof,
   },
 };

@@ -28,5 +28,8 @@ mod macros;
 /// FFI interface exposed by this crate
 pub mod bbs;
 
+/// FFI interface for BBS bound signatures and proofs
+pub mod bbs_bound;
+
 /// Domain Transfer Objects used over the FFI interface exposed by this crate
 pub mod dtos;

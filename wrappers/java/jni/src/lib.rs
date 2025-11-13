@@ -49,3 +49,4 @@ pub extern "C" fn Java_pairing_1crypto_Bbs_get_1last_1error<'a>(
 }
 
 pub mod bbs;
+pub mod bbs_bound;

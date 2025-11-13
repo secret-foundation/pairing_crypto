@@ -16,6 +16,13 @@ export { BbsSignRequest } from './BbsSignRequest';
 export { BbsVerifyRequest } from './BbsVerifyRequest';
 export { BbsVerifyResult } from './BbsVerifyResult';
 export { BbsVerifyProofRequest } from './BbsVerifyProofRequest';
+export { BbsBoundSignRequest } from './BbsBoundSignRequest';
+export { BbsBoundVerifyRequest } from './BbsBoundVerifyRequest';
+export { BbsBoundDeriveProofRequest } from './BbsBoundDeriveProofRequest';
+export { BbsBoundVerifyProofRequest } from './BbsBoundVerifyProofRequest';
+export { BbsBoundVerifyResult } from './BbsBoundVerifyResult';
+export { BlsKeyPopGenRequest } from './BlsKeyPopGenRequest';
+export { BlsKeyPopVerifyRequest } from './BlsKeyPopVerifyRequest';
 
 export { KeyPair } from './KeyPair';
 export { KeyGenerationRequest } from './KeyGenerationRequest';
